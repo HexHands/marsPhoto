@@ -15,7 +15,8 @@ class PerseveranceScraper
   def collect_links
     response = (URI.open("https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&latest=true").read)
     latest_sol_available = JSON.parse(response)["latest_sol"].to_i
-    latest_sol_scraped = rover.photos.maximum(:sol).to_i
+	latest_sol_scraped = rover.photos.maximum(:sol)
+	latest_sol_scraped = latest_sol_scraped.nil? ? -1 : latest_sol_scraped.to_i
     sols_to_scrape = latest_sol_scraped..latest_sol_available
     sols_to_scrape.map { |sol|
 	    "https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol=#{sol}"
@@ -33,7 +34,7 @@ class PerseveranceScraper
   def scrape_photo_page(url)
     image_array = JSON.parse(URI.open(url).read)
     image_array['images'].each do |image|
-      if(image['sample_type'] == 'Full')
+      if image['sample_type'].to_s.downcase == 'full'
         url = image['image_files']['large']
         create_photo(image)
       end
@@ -50,6 +51,8 @@ class PerseveranceScraper
       photo = Photo.find_or_initialize_by(sol: sol, camera: camera,
                                           img_src: link, rover: rover)
       photo.log_and_save_if_new
+      sleep_seconds = ENV.fetch("SCRAPE_SLEEP_SECONDS", "0").to_f
+      sleep(sleep_seconds) if sleep_seconds > 0
     end
   end
 
