@@ -16,7 +16,8 @@ class CuriosityScraper
     # Fetch the latest sol available through the API
     response = JSON.parse(URI.open(BASE_URL + "?order=sol%20desc,instrument_sort%20asc,sample_type_sort%20asc,%20date_taken%20desc&per_page=1&page=0&condition_1=msl:mission").read)
     latest_sol_available = response["items"].first["sol"].to_i
-    latest_sol_scraped = rover.photos.maximum(:sol).to_i
+    latest_sol_scraped = rover.photos.maximum(:sol)
+    latest_sol_scraped = latest_sol_scraped.nil? ? -1 : latest_sol_scraped.to_i
     sols_to_scrape = (latest_sol_scraped..latest_sol_available) #.to_a.last(10) # Only fetch the last 10 sols
 
     sols_to_scrape.map { |sol|
@@ -36,7 +37,11 @@ class CuriosityScraper
     begin
       response = JSON.parse(URI.open(url).read)
       response['items'].each do |image|
-        create_photo(image) if image['extended'] && image['extended']['sample_type'] == 'full'
+        sample_type =
+          image.dig('extended', 'sample_type') ||
+          image['sample_type']
+        
+        create_photo(image) if sample_type&.downcase == 'full'
       end
     rescue OpenURI::HTTPError => e
       puts "HTTP error occurred: #{e.message} for URL: #{url}. Skipping."
@@ -55,6 +60,8 @@ class CuriosityScraper
     else
       photo = Photo.find_or_initialize_by(sol: sol, camera: camera, img_src: link, rover: rover)
       photo.log_and_save_if_new
+      sleep_seconds = ENV.fetch("SCRAPE_SLEEP_SECONDS", "0").to_f
+      sleep(sleep_seconds) if sleep_seconds > 0
     end
   end
 
