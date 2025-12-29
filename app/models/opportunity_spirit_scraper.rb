@@ -1,3 +1,5 @@
+require "nokogiri"
+
 class OpportunitySpiritScraper
   require "open-uri"
 
@@ -84,6 +86,8 @@ class OpportunitySpiritScraper
     photo = Photo.find_or_initialize_by(sol: reg[:sol].to_i, camera: camera,
                                     img_src: src, rover: rover)
     photo.log_and_save_if_new
+    sleep_seconds = ENV.fetch("SCRAPE_SLEEP_SECONDS", "0").to_f
+    sleep(sleep_seconds) if sleep_seconds > 0
   end
 
   def build_src(early_path, photo_page)
