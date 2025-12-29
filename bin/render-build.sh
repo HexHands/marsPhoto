@@ -3,9 +3,5 @@ set -o errexit
 
 bundle install
 
-# If this app uses assets (it appears to have a frontend under /public), keep these:
-bundle exec rails assets:precompile
-bundle exec rails assets:clean
-
-# Run migrations during build (common for simple setups)
+# Free Render: do migrations during build (since preDeployCommand needs paid) 
 bundle exec rails db:migrate
