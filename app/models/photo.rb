@@ -20,13 +20,28 @@ class Photo < ActiveRecord::Base
   end
 
   def self.search_by_date(params)
-    if params[:sol]
-      where sol: params[:sol]
-    elsif params[:earth_date]
-      where earth_date: Date.strptime(params[:earth_date])
+    if params[:start_sol].present? && params[:end_sol].present?
+      # convert strings to integers safely
+      startSol = params[:start_sol].to_i
+      endSol   = params[:end_sol].to_i
+      where(sol: startSol..endSol)
+    elsif params[:sol].present?
+      where(sol: params[:sol])
+    elsif params[:earth_date].present?
+      where(earth_date: Date.strptime(params[:earth_date]))
     else
-      none
+      Photo.all
     end
+  end
+
+  def self.search_by_camera(params, rover)
+    cameraName = params[:camera].to_s.upcase
+    camera     = if rover
+                   rover.cameras.find_by(name: cameraName)
+                 else
+                   Camera.find_by(name: cameraName)
+                 end
+    where(camera: camera)
   end
 
   def self.search_by_camera(params, rover)
