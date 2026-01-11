@@ -9,7 +9,8 @@ Rails.application.routes.draw do
         resources :photos, only: :index
         resources :latest_photos, only: :index
       end
-      resources :photos, only: :show
+
+      resources :photos, only: [:show, :index]   # previously only :show
       resources :manifests, only: :show
     end
   end
