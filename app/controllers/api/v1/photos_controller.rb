@@ -1,29 +1,34 @@
+# app/controllers/api/v1/photos_controller.rb
 class Api::V1::PhotosController < ApplicationController
-  def show
-    photo = Photo.find params[:id]
-    render json: photo, serializer: PhotoSerializer, root: :photo
-  end
 
   def index
-    rover = Rover.find_by name: params[:rover_id].titleize
-    if rover
-      render json: photos(rover), each_serializer: PhotoSerializer, root: :photos
-    else
-      render json: { errors: "Invalid Rover Name" }, status: :bad_request
+    # allow rover_id to be optional
+    roverName   = params[:rover_id]
+    rover       = roverName.present? ? Rover.find_by(name: roverName.to_s.titleize) : nil
+
+    # if rover_id was supplied but not found, return an error
+    if roverName.present? && rover.nil?
+      render(json: { errors: "Invalid Rover Name" }, status: :bad_request) and return
     end
+
+    render json: photos(rover), each_serializer: PhotoSerializer, root: :photos
   end
 
   private
 
-  def photo_params
-    params.permit :sol, :camera, :earth_date, :rover_id
+  def photoParams
+    params.permit(:sol, :start_sol, :end_sol, :camera, :earth_date, :page, :per_page, :rover_id)
   end
 
   def photos(rover)
-    photos = rover.photos.order(:camera_id, :id).search photo_params, rover
-    if params[:page]
-      photos = photos.page(params[:page]).per params[:per_page]
+    baseScope = rover ? rover.photos : Photo.all
+
+    scoped = baseScope.order(:camera_id, :id).search(photoParams, rover)
+
+    if params[:page].present?
+      perPage = (params[:per_page].presence || 25).to_i
+      scoped  = scoped.page(params[:page]).per(perPage)
     end
-    photos
+    scoped
   end
 end
