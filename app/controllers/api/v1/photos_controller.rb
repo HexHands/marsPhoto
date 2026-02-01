@@ -3,11 +3,11 @@
 # Updated Api::V1::PhotosController
 #
 # This controller supports optional rover_id and sol ranges, optimizes queries to
-# issue a single SQL request, and enforces a rate limit of 45 requests per minute per IP.
+# issue a single SQL request, and enforces a rate limit of 20 requests per minute per IP.
 # All local variables use camelCase as requested.
 
 class Api::V1::PhotosController < ApplicationController
-  # Rate limit requests to 45 per minute per IP
+  # Rate limit requests to 20 per minute per IP
   before_action :rate_limit
 
   # GET /api/v1/photos or /api/v1/rovers/:rover_id/photos
@@ -34,13 +34,13 @@ class Api::V1::PhotosController < ApplicationController
 
   # Rate limiting logic
   # Uses Rails.cache to count requests from each IP. If the count exceeds
-  # 45 within a 60-second window, a 429 Too Many Requests response is returned.
+  # 20 within a 60-second window, a 429 Too Many Requests response is returned.
   def rate_limit
     ipAddress    = request.ip
     rateKey      = "photos_rate_limit:#{ipAddress}"
     requestCount = Rails.cache.read(rateKey).to_i
-    if requestCount >= 45
-      render json: { errors: 'Rate limit exceeded: max 45 requests per minute' }, status: :too_many_requests and return
+    if requestCount >= 20
+      render json: { errors: 'Rate limit exceeded: max 20 requests per minute' }, status: :too_many_requests and return
     else
       Rails.cache.write(rateKey, requestCount + 1, expires_in: 1.minute)
     end
