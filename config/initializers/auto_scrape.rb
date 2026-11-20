@@ -1,20 +1,30 @@
 Rails.application.config.after_initialize do
   next unless ENV["AUTO_SCRAPE"] == "true"
 
-  # Avoid spawning multiple scrapers if Puma uses multiple workers
-  # Easiest is: set WEB_CONCURRENCY=1 in Render
+  # Run automatic scraping in a background thread.
+  # Use WEB_CONCURRENCY=1 on Render to avoid duplicate scrapers.
   Thread.new do
     loop do
-      begin
-        PerseveranceScraper.new.scrape
-        CuriosityScraper.new.scrape
-        OpportunitySpiritScraper.new("Opportunity").scrape
-        OpportunitySpiritScraper.new("Spirit").scrape
-      rescue => e
-        Rails.logger.error("AUTO_SCRAPE error: #{e.class}: #{e.message}")
-      ensure
-        sleep ENV.fetch("SCRAPE_LOOP_SLEEP_SECONDS", "30").to_i
+      scrapers = {
+        "Perseverance" => PerseveranceScraper,
+        "Curiosity" => CuriosityScraper
+      }
+
+      scrapers.each do |roverName, scraperClass|
+        begin
+          scraperClass.new.scrape
+        rescue StandardError => error
+          Rails.logger.error(
+            "AUTO_SCRAPE #{roverName} error: #{error.class}: #{error.message}"
+          )
+        end
       end
+
+      sleepSeconds = ENV.fetch(
+        "SCRAPE_LOOP_SLEEP_SECONDS", "30"
+      ).to_i
+
+      sleep [sleepSeconds, 1].max
     end
   end
 end
